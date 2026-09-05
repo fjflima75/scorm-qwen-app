@@ -109,7 +109,7 @@ function initialData() {
     save(K.courses, courses);
     save(K.seeded, "1");
     const attempts = load<Attempt[]>(K.attempts, []);
-    if (!attempts.length) save(K.attempts, seedAttempts(seeded[0].id));
+    if (!attempts.length) save(K.attempts, seedAttempts(seeded[0]));
   } else {
     for (const id of Object.keys(courses)) { try { courses[id] = migrateCourse(courses[id]); } catch { delete courses[id]; } }
   }

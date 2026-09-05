@@ -1,9 +1,10 @@
-import { BarChart3, BookOpen, ChevronRight, Clock, Copy, Eye, FileText, Languages, Layers, MoreHorizontal, Pencil, Play, Plus, Search, Sparkles, Trash2, TrendingUp } from "lucide-react";
-import { useMemo, useState } from "react";
-import { LANGUAGES } from "../lib/ai";
+import { BarChart3, BookOpen, Check, ChevronRight, ClipboardCheck, Clock, Copy, Eye, FileText, Languages, Layers, MoreHorizontal, Pencil, Play, Plus, Rocket, Search, Send, ShieldCheck, Sparkles, Trash2, TrendingUp, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { validateCourse } from "../lib/scorm";
 import { TEMPLATES } from "../lib/seed";
 import { AI_COST, go, useStore } from "../lib/store";
 import { Attempt, Course, blockCount, courseMinutes } from "../lib/types";
+import { TranslateModal } from "./TranslateModal";
 import { Btn, Chip, EmptyState, Field, IconBtn, Menu, Modal, ProgressBar, Select, TextInput } from "./ui";
 
 export function TopBar({ children }: { children?: React.ReactNode }) {
@@ -37,6 +38,54 @@ export function TopBar({ children }: { children?: React.ReactNode }) {
         </div>
       </div>
     </header>
+  );
+}
+
+function OnboardingChecklist() {
+  const courses = useStore((s) => s.courses);
+  const [, force] = useState(0);
+  const [dismissed, setDismissed] = useState(() => localStorage.getItem("ls.onboard.dismissed") === "1");
+  useEffect(() => { const t = setTimeout(() => force((x) => x + 1), 300); return () => clearTimeout(t); }, []);
+  if (dismissed) return null;
+
+  const all = Object.values(courses);
+  const firstId = all[0]?.id;
+  const hasAssessment = all.some((c) => c.modules.some((m) => m.lessons.some((l) => l.blocks.some((b) => b.kind === "quiz" || b.kind === "question"))));
+  const steps: { label: string; hint: string; done: boolean; go?: () => void }[] = [
+    { label: "Create a course", hint: "AI, document, or blank canvas", done: all.length > 0, go: () => go({ name: "new" }) },
+    { label: "Generate with AI", hint: "Objectives, lessons & activities", done: all.some((c) => c.aiGenerated), go: () => go({ name: "new" }) },
+    { label: "Add an assessment", hint: "Quiz block or final assessment", done: hasAssessment, go: firstId ? () => go({ name: "editor", courseId: firstId }) : undefined },
+    { label: "Preview as a learner", hint: "Answer a question, finish the course", done: localStorage.getItem("ls.onboard.preview") === "1", go: firstId ? () => go({ name: "play", courseId: firstId }) : undefined },
+    { label: "Export a SCORM package", hint: "Download & upload to your LMS", done: localStorage.getItem("ls.onboard.export") === "1", go: firstId ? () => go({ name: "editor", courseId: firstId }) : undefined },
+  ];
+  const doneCount = steps.filter((s) => s.done).length;
+  const complete = doneCount === steps.length;
+
+  return (
+    <div className={`rounded-xl border p-4 mb-7 anim-rise relative overflow-hidden ${complete ? "border-ok/30 bg-ok-3/40" : "border-pine-4/60 bg-pine-3/40"}`}>
+      <div className="absolute inset-y-0 left-0 w-1 bg-pine" style={{ opacity: complete ? 0 : 1 }} />
+      <div className="flex items-center gap-2.5 mb-3 flex-wrap">
+        <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-white ${complete ? "bg-ok" : "bg-pine"}`}>{complete ? <Check size={15} strokeWidth={3} /> : <Rocket size={15} />}</span>
+        <div className="grow">
+          <p className="font-display font-bold text-[14px]">{complete ? "You're fully set up — nice work." : "Get set up in five steps"}</p>
+          <p className="text-[11.5px] text-mute">{complete ? "Dismiss this card whenever you like." : `From idea to LMS-ready package · ${doneCount}/5 complete`}</p>
+        </div>
+        <ProgressBar value={(doneCount / steps.length) * 100} className="w-[120px]" />
+        <IconBtn label="Dismiss checklist" onClick={() => { localStorage.setItem("ls.onboard.dismissed", "1"); setDismissed(true); }}><X size={14} /></IconBtn>
+      </div>
+      <div className="grid sm:grid-cols-5 gap-2">
+        {steps.map((s) => (
+          <button key={s.label} onClick={s.go} disabled={!s.go}
+            className={`text-left rounded-lg border px-3 py-2.5 transition-all ${s.done ? "border-ok/30 bg-surface" : "border-line bg-surface hover:border-pine hover:-translate-y-0.5"} ${!s.go ? "opacity-60 cursor-default" : ""}`}>
+            <span className={`flex items-center gap-1.5 text-[12px] font-bold ${s.done ? "text-ok" : "text-ink"}`}>
+              <span className={`w-4 h-4 rounded-full flex items-center justify-center flex-none ${s.done ? "bg-ok-3 text-ok" : "bg-canvas border border-line-2"}`}>{s.done && <Check size={10} strokeWidth={3.5} />}</span>
+              {s.label}
+            </span>
+            <span className="block text-[10.5px] text-faint mt-1 leading-snug">{s.hint}</span>
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -77,6 +126,8 @@ export function Dashboard() {
             </div>
             <Btn size="lg" onClick={() => go({ name: "new" })}><Plus size={16} /> Create course</Btn>
           </div>
+
+          <OnboardingChecklist />
 
           {/* stats */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-7">
@@ -174,13 +225,13 @@ function CourseCard({ course, attempts, delay }: { course: Course; attempts: Att
   const duplicateCourse = useStore((s) => s.duplicateCourse);
   const deleteCourse = useStore((s) => s.deleteCourse);
   const updateCourse = useStore((s) => s.updateCourse);
-  const translateCourse = useStore((s) => s.translateCourse);
   const toast = useStore((s) => s.toast);
   const [rename, setRename] = useState(false);
   const [del, setDel] = useState(false);
   const [translate, setTranslate] = useState(false);
   const [name, setName] = useState(course.title);
   const lessons = course.modules.reduce((a, m) => a + m.lessons.length, 0);
+  const a11y = useMemo(() => validateCourse(course).score, [course]);
 
   const cover = course.cover.startsWith("http") || course.cover.startsWith("data:")
     ? { backgroundImage: `url(${course.cover})`, backgroundSize: "cover", backgroundPosition: "center" }
@@ -205,6 +256,9 @@ function CourseCard({ course, attempts, delay }: { course: Course; attempts: Att
             <span className="flex items-center gap-1"><Clock size={11} /> {courseMinutes(course)} min</span>
             <span>{lessons} lessons</span>
             <span>{attempts.length} attempt{attempts.length !== 1 ? "s" : ""}</span>
+            <span className={`flex items-center gap-1 font-semibold ${a11y >= 85 ? "text-ok" : a11y >= 60 ? "text-amber-2" : "text-bad"}`} title="Accessibility & QA score from the package validator">
+              <ShieldCheck size={11} /> {a11y}
+            </span>
           </p>
           <p className="text-[10.5px] text-faint mt-1.5">Edited {relTime(course.updatedAt)} · {course.authorName || "You"}</p>
         </div>
@@ -236,17 +290,7 @@ function CourseCard({ course, attempts, delay }: { course: Course; attempts: Att
       </>}>
         <p className="text-[13.5px] text-mute leading-relaxed">“{course.title}” and its {lessons} lessons will be removed from this workspace. Published packages already downloaded are unaffected.</p>
       </Modal>
-      <Modal open={translate} onClose={() => setTranslate(false)} title="Duplicate & translate" subtitle="Creates a copy — the original is never overwritten." footer={null}>
-        <div className="grid grid-cols-2 gap-2">
-          {LANGUAGES.filter((l) => l.code !== course.settings.language).map((l) => (
-            <button key={l.code} onClick={() => { const id = translateCourse(course.id, l.code); setTranslate(false); go({ name: "editor", courseId: id }); }}
-              className="text-left rounded-lg border border-line px-3 py-2.5 hover:border-pine hover:bg-pine-3/40 transition-all">
-              <p className="text-[13px] font-semibold">{l.name}</p>
-              <p className="text-[10.5px] text-faint">UI translated · content kept as source</p>
-            </button>
-          ))}
-        </div>
-      </Modal>
+      <TranslateModal course={course} open={translate} onClose={() => setTranslate(false)} />
     </div>
   );
 }

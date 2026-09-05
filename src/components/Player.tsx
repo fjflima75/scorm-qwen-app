@@ -1,6 +1,7 @@
 import { ArrowLeft, ArrowRight, Bug, Check, CheckCheck, ChevronLeft, Eye, MessageSquare, Monitor, RotateCcw, Smartphone, Tablet, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { go, useStore } from "../lib/store";
+import { isRTL } from "../lib/translate";
 import { Attempt, Course, allLessons, uid } from "../lib/types";
 import { BlockView, LearnContext, LearnState, ThemeContext } from "./blocks";
 import { Btn, Chip, IconBtn, Seg, TextArea } from "./ui";
@@ -22,21 +23,27 @@ export function Player({ course, review, onTrack }: { course: Course; review?: b
   const [submitted, setSubmitted] = useState<Record<string, boolean>>({});
   const startedRef = useRef(Date.now());
   const recordedRef = useRef(false);
+  const statsRef = useRef<{ questionId: string; correct: boolean }[]>([]);
   const [commentFor, setCommentFor] = useState<string | null>(null);
 
   const current = lessons[idx];
   const theme = course.theme;
 
   const track = (label: string, key: string, val = "") => onTrack?.({ ts: Date.now(), label, key, val });
-  useEffect(() => { track("initialized", "course", course.title); /* eslint-disable-next-line */ }, []);
+  useEffect(() => {
+    track("initialized", "course", course.title);
+    try { localStorage.setItem("ls.onboard.preview", "1"); } catch { /* noop */ }
+    /* eslint-disable-next-line */
+  }, []);
   useEffect(() => { if (current) track("experienced", "lesson", current.lesson.title); /* eslint-disable-next-line */ }, [idx]);
 
   const learn: LearnState = useMemo(() => ({
     answers, submitted,
     set: (k, v) => setAnswers((a) => ({ ...a, [k]: v })),
     markSubmitted: (k) => setSubmitted((s) => ({ ...s, [k]: true })),
-    onQuizResult: (blockId, pct, graded, correct, total) => {
+    onQuizResult: (blockId, pct, graded, correct, total, stats) => {
       track("answered", "quiz", `${correct}/${total} correct`);
+      statsRef.current = [...statsRef.current, ...stats];
       if (graded) {
         setScores((s) => ({ ...s, [blockId]: pct }));
         track(pct >= course.settings.passMark ? "passed" : "failed", "assessment", `${pct}%`);
@@ -62,7 +69,7 @@ export function Player({ course, review, onTrack }: { course: Course; review?: b
         const a: Attempt = {
           id: uid(), courseId: course.id, learner: review ? "Reviewer" : (user?.name || "Learner"),
           ts: Date.now(), score: bestScore, passed: bestScore != null ? bestScore >= course.settings.passMark : null,
-          completed: true, seconds: Math.round((Date.now() - startedRef.current) / 1000), questionStats: [],
+          completed: true, seconds: Math.round((Date.now() - startedRef.current) / 1000), questionStats: statsRef.current.slice(),
         };
         if (!review) recordAttempt(a);
       }
@@ -99,7 +106,7 @@ export function Player({ course, review, onTrack }: { course: Course; review?: b
   return (
     <ThemeContext.Provider value={theme}>
       <LearnContext.Provider value={learn}>
-        <div className="flex h-full bg-canvas text-ink" style={{ fontFamily: theme.font === "serif" ? "Georgia, serif" : undefined }}>
+        <div dir={isRTL(course.settings.language) ? "rtl" : "ltr"} className="flex h-full bg-canvas text-ink" style={{ fontFamily: theme.font === "serif" ? "Georgia, serif" : undefined }}>
           {/* sidebar */}
           <aside className="w-[264px] flex-none bg-night text-canvas flex flex-col overflow-hidden max-sm:hidden">
             <div className="p-4 flex items-center gap-2.5 border-b border-white/10">

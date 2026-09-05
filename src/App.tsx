@@ -1,6 +1,6 @@
 import { Suspense, lazy, useEffect, useState } from "react";
 import { Auth } from "./components/Auth";
-import { Dashboard, InsightsScreen } from "./components/Dashboard";
+import { Dashboard } from "./components/Dashboard";
 import { Landing } from "./components/Landing";
 import { PreviewShell } from "./components/Player";
 import { ToastHost } from "./components/ui";
@@ -9,6 +9,7 @@ import { parseHash, useStore } from "./lib/store";
 /* heavy authoring screens load on demand */
 const Editor = lazy(() => import("./components/Editor").then((m) => ({ default: m.Editor })));
 const Wizard = lazy(() => import("./components/Wizard").then((m) => ({ default: m.Wizard })));
+const Insights = lazy(() => import("./components/Insights").then((m) => ({ default: m.Insights })));
 
 function SuspenseFallback() {
   return (
@@ -67,7 +68,7 @@ export default function App() {
       {route.name === "editor" && <Editor courseId={route.courseId} />}
       {route.name === "play" && <PreviewShell courseId={route.courseId} />}
       {route.name === "review" && <PreviewShell courseId={route.courseId} review />}
-      {route.name === "insights" && <InsightsScreen courseId={route.courseId} />}
+      {route.name === "insights" && <Insights courseId={route.courseId} />}
       <ToastHost />
     </Suspense>
   );

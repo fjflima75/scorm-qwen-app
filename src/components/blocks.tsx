@@ -8,7 +8,7 @@ export interface LearnState {
   set: (k: string, v: unknown) => void;
   submitted: Record<string, boolean>;
   markSubmitted: (k: string) => void;
-  onQuizResult?: (blockId: string, pct: number, graded: boolean, correct: number, total: number) => void;
+  onQuizResult?: (blockId: string, pct: number, graded: boolean, correct: number, total: number, stats: { questionId: string; correct: boolean }[]) => void;
 }
 export const LearnContext = createContext<LearnState | null>(null);
 export const ThemeContext = createContext<Theme>(defaultTheme());
@@ -148,14 +148,17 @@ function QuizView({ block }: { block: Extract<Block, { kind: "quiz" }> }) {
 
   const submit = () => {
     let correct = 0;
+    const stats: { questionId: string; correct: boolean }[] = [];
     for (const q of block.questions) {
       const qk = `${kbase}:${q.id}`;
       const ans = q.type === "fill" ? (learn ? learn.answers[qk + ":txt"] : undefined) : q.type === "order" ? (learn ? learn.answers[qk + ":ord"] : undefined) : (learn ? learn.answers[qk + ":sel"] : undefined);
-      if (gradeQ(q, ans)) correct++;
+      const ok = gradeQ(q, ans);
+      if (ok) correct++;
+      stats.push({ questionId: q.id, correct: ok });
     }
     const pct = Math.round((correct / Math.max(1, block.questions.length)) * 100);
     setLastPct(pct);
-    if (learn) { learn.markSubmitted(kbase); learn.onQuizResult?.(block.id, pct, block.mode === "graded", correct, block.questions.length); }
+    if (learn) { learn.markSubmitted(kbase); learn.onQuizResult?.(block.id, pct, block.mode === "graded", correct, block.questions.length, stats); }
     else setLocalDone(true);
   };
 

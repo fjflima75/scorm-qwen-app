@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, BookOpen, ChevronDown, ChevronRight, ClipboardCheck, Copy, Eye, GripVertical, History, LayoutPanelLeft, MessageSquare, Monitor, PanelRight, Pencil, Play, Plus, Send, Smartphone, Sparkles, Tablet, Trash2, Undo2, Redo2, Wand2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, BookOpen, ChevronDown, ChevronRight, ClipboardCheck, Copy, Eye, GripVertical, History, Image as ImageIcon, LayoutPanelLeft, MessageSquare, Monitor, PanelRight, Pencil, Play, Plus, Send, Smartphone, Sparkles, Tablet, Trash2, Undo2, Redo2, Wand2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { LocalProvider, RewriteIntent } from "../lib/ai";
 import { go, useStore } from "../lib/store";
@@ -6,6 +6,7 @@ import { Block, BlockKind, BlockNoId, Course, Lesson, Module, findLesson, uid } 
 import { BLOCK_META, BlockView, ThemeContext } from "./blocks";
 import { Btn, Chip, IconBtn, Menu, Seg, Spinner, TextInput } from "./ui";
 import { CommandPalette, ExportModal, QuizGenModal, RewriteModal, ShareModal, VersionsModal } from "./Modals";
+import { MediaStudio } from "./MediaStudio";
 import { PropsPanel, newQuestion } from "./PropsPanel";
 
 export function Editor({ courseId }: { courseId: string }) {
@@ -21,6 +22,7 @@ export function Editor({ courseId }: { courseId: string }) {
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [mediaOpen, setMediaOpen] = useState(false);
   const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [rewrite, setRewrite] = useState<{ original: string; proposed: string; intent: string; apply: () => void } | null>(null);
   const [drag, setDrag] = useState<{ blockId: string; from: string } | null>(null);
@@ -259,6 +261,7 @@ export function Editor({ courseId }: { courseId: string }) {
             <span className="w-px h-6 bg-line mx-1" />
             <IconBtn label="Command palette (⌘K)" onClick={() => setPaletteOpen(true)}><SearchIcon /></IconBtn>
             <IconBtn label="Version history" onClick={() => setVersionsOpen(true)}><History size={15} /></IconBtn>
+            <IconBtn label="Media Studio" onClick={() => setMediaOpen(true)}><ImageIcon size={15} /></IconBtn>
             <div onClick={() => setShareOpen(true)} className="relative cursor-pointer" role="button" tabIndex={0} onKeyDown={(e) => e.key === "Enter" && setShareOpen(true)} aria-label="Share for review">
               <IconBtn label="Share for review"><MessageSquare size={15} /></IconBtn>
               {openComments > 0 && <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-amber text-night text-[9.5px] font-bold flex items-center justify-center pointer-events-none">{openComments}</span>}
@@ -463,6 +466,7 @@ export function Editor({ courseId }: { courseId: string }) {
         <VersionsModal course={course} open={versionsOpen} onClose={() => setVersionsOpen(false)} />
         <ShareModal course={course} open={shareOpen} onClose={() => setShareOpen(false)} />
         <RewriteModal open={!!rewrite} onClose={() => setRewrite(null)} original={rewrite?.original || ""} proposed={rewrite?.proposed || ""} intent={rewrite?.intent || ""} onApply={() => rewrite?.apply()} />
+        <MediaStudio course={course} open={mediaOpen} onClose={() => setMediaOpen(false)} />
         <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} actions={paletteActions} />
       </div>
     </ThemeContext.Provider>

@@ -72,15 +72,28 @@ export function buildSeedCourses(authorName: string): Course[] {
 }
 
 /* Demo learner attempts so analytics have life on first load. */
-export function seedAttempts(courseId: string) {
+export function seedAttempts(course: Course) {
   const names = ["Maya R.", "Jonas K.", "Priya S.", "Tomás A.", "Lena W.", "Omar H.", "Grace N.", "Felix B."];
-  return names.map((n, i) => ({
-    id: uid(), courseId, learner: n,
-    ts: Date.now() - (i + 1) * 1000 * 60 * 60 * (6 + i * 3),
-    score: [92, 78, 100, 84, 66, 95, 88, 71][i],
-    passed: [92, 78, 100, 84, 66, 95, 88, 71][i] >= 80,
-    completed: i !== 4,
-    seconds: 900 + i * 240,
-    questionStats: [],
-  }));
+  const qIds: string[] = [];
+  for (const m of course.modules) for (const l of m.lessons) for (const b of l.blocks) {
+    if (b.kind === "quiz") b.questions.forEach((q) => qIds.push(q.id));
+    if (b.kind === "question") qIds.push(b.q.id);
+  }
+  return names.map((n, i) => {
+    const score = [92, 78, 100, 84, 66, 95, 88, 71][i];
+    /* per-question outcomes consistent with the attempt score */
+    const questionStats = qIds.map((qid, qi) => ({
+      questionId: qid,
+      correct: qi < Math.round((score / 100) * qIds.length) - (i % 2 === 1 && qi === qIds.length - 1 ? 1 : 0),
+    }));
+    return {
+      id: uid(), courseId: course.id, learner: n,
+      ts: Date.now() - (i + 1) * 1000 * 60 * 60 * (6 + i * 3),
+      score,
+      passed: score >= 80,
+      completed: i !== 4,
+      seconds: 900 + i * 240,
+      questionStats,
+    };
+  });
 }

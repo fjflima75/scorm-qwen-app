@@ -37,6 +37,7 @@ export function ExportModal({ course, open, onClose }: { course: Course; open: b
       const res = await buildPackage(course, format, { xapiEndpoint: endpoint });
       const name = `${slug(course.title)}-${format}${format === "xapi" ? "" : ""}.zip`;
       downloadBlob(res.blob, name);
+      try { localStorage.setItem("ls.onboard.export", "1"); } catch { /* noop */ }
       saveVersion(course.id, `Exported ${EXPORTERS.find((e) => e.format === format)?.label}`);
       setLastSize(`${(res.blob.size / 1024).toFixed(0)} KB · ${res.files.length} files`);
       toast("ok", `Package downloaded — upload ${name} to your LMS.`);

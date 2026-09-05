@@ -127,8 +127,9 @@ function playerHtml(c: Course, format: ExportFormat, opts: { xapiEndpoint?: stri
   };
   const data = { course: c, tracking, chrome: chromeStrings(c), actor: null };
   const json = JSON.stringify(data).replace(/</g, "\\u003c");
+  const rtl = ["ar", "he", "fa", "ur"].includes(c.settings.language);
   return `<!doctype html>
-<html lang="${esc(c.settings.language || "en")}">
+<html lang="${esc(c.settings.language || "en")}"${rtl ? ' dir="rtl"' : ""}>
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
