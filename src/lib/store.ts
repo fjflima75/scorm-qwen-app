@@ -97,23 +97,43 @@ interface State {
   redo(): void;
 }
 
-/* ---------------- initial load ---------------- */
+/* ---------------- initial load (never allowed to crash boot) ---------------- */
+function freshSeed(users: UserT[]) {
+  const author = users[0]?.name || "Alex Morgan";
+  const seeded = buildSeedCourses(author);
+  const courses = Object.fromEntries(seeded.map((c) => [c.id, c]));
+  save(K.courses, courses);
+  save(K.seeded, "1");
+  save(K.attempts, seedAttempts(seeded[0]));
+  return courses;
+}
+
 function initialData() {
-  const users = load<UserT[]>(K.users, []);
-  const session = load<SessionT | null>(K.session, null);
-  let courses = load<Record<ID, Course>>(K.courses, {});
-  if (!localStorage.getItem(K.seeded) || Object.keys(courses).length === 0) {
-    const author = users[0]?.name || "Alex Morgan";
-    const seeded = buildSeedCourses(author);
-    courses = Object.fromEntries(seeded.map((c) => [c.id, c]));
-    save(K.courses, courses);
-    save(K.seeded, "1");
-    const attempts = load<Attempt[]>(K.attempts, []);
-    if (!attempts.length) save(K.attempts, seedAttempts(seeded[0]));
-  } else {
-    for (const id of Object.keys(courses)) { try { courses[id] = migrateCourse(courses[id]); } catch { delete courses[id]; } }
+  try {
+    const users = load<UserT[]>(K.users, []);
+    const session = load<SessionT | null>(K.session, null);
+    let courses = load<Record<ID, Course>>(K.courses, {});
+    let attempts = load<Attempt[]>(K.attempts, []);
+    if (!localStorage.getItem(K.seeded) || Object.keys(courses).length === 0) {
+      courses = freshSeed(users);
+      attempts = load<Attempt[]>(K.attempts, []);
+    } else {
+      for (const id of Object.keys(courses)) { try { courses[id] = migrateCourse(courses[id]); } catch { delete courses[id]; } }
+      if (Object.keys(courses).length === 0) courses = freshSeed(users);
+    }
+    return { users, session, courses, attempts, versions: load<CourseVersion[]>(K.versions, []) };
+  } catch (err) {
+    /* corrupted local data — reset the workspace rather than white-screen */
+    console.warn("Lessonsmith: resetting workspace storage after boot error", err);
+    try { [K.users, K.session, K.courses, K.attempts, K.versions, K.seeded].forEach((k) => localStorage.removeItem(k)); } catch { /* noop */ }
+    try {
+      const courses = freshSeed([]);
+      return { users: [], session: null, courses, attempts: load<Attempt[]>(K.attempts, []), versions: [] };
+    } catch (err2) {
+      console.error("Lessonsmith: seed failed", err2);
+      return { users: [], session: null, courses: {}, attempts: [], versions: [] };
+    }
   }
-  return { users, session, courses, attempts: load<Attempt[]>(K.attempts, []), versions: load<CourseVersion[]>(K.versions, []) };
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;

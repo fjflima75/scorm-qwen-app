@@ -12,6 +12,23 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      /* If the app bundle never mounts, surface a visible reason instead of a blank screen. */
+      window.addEventListener("error", function (e) {
+        var root = document.getElementById("root");
+        if (root && !root.hasChildNodes()) {
+          root.innerHTML =
+            '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f3f4f0;font-family:system-ui,sans-serif;padding:24px">' +
+            '<div style="background:#fff;border:1px solid #d3d8cf;border-radius:14px;padding:28px 32px;max-width:520px">' +
+            '<p style="margin:0;font-weight:800;font-size:17px;color:#14201a">Lessonsmith could not start</p>' +
+            '<p style="margin:8px 0 0;font-size:13.5px;line-height:1.55;color:#39423c">The app script failed to load or threw before mounting. Try a hard reload (Ctrl/Cmd+Shift+R).</p>' +
+            '<pre style="margin:14px 0 0;padding:12px;background:#f3f4f0;border-radius:8px;font-size:11px;color:#67716a;overflow:auto;max-height:120px"></pre>' +
+            "</div></div>";
+          var pre = root.querySelector("pre");
+          if (pre) pre.textContent = String((e && e.message) || e);
+        }
+      }, true);
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
