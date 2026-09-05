@@ -33,6 +33,16 @@ export function TopBar({ children }: { children?: React.ReactNode }) {
           </div>
           <Menu button={<IconBtn label="Account menu"><MoreHorizontal size={16} /></IconBtn>} items={[
             { label: "Add 50 demo credits", icon: <Sparkles size={14} />, onClick: () => { useStore.getState().adjustCredits(50); useStore.getState().toast("ok", "+50 demo credits added."); } },
+            {
+              label: "Download source (.zip)", icon: <FileText size={14} />, onClick: async () => {
+                useStore.getState().toast("info", "Packaging the full project source…");
+                try {
+                  const { downloadSourceZip } = await import("../lib/sourceZip");
+                  const bytes = await downloadSourceZip();
+                  useStore.getState().toast("ok", `lessonsmith-source.zip downloaded (${(bytes / 1024).toFixed(0)} KB).`);
+                } catch { useStore.getState().toast("err", "Couldn't package the source. Try again."); }
+              },
+            },
             { label: "Sign out", onClick: signOut, danger: true, divider: true },
           ]} />
         </div>

@@ -1,6 +1,7 @@
 import { ArrowRight, Check, ChevronDown, ClipboardCheck, FileText, Globe, Package, Route, Sparkles, Star, Wand2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Block } from "../lib/types";
+import { useStore } from "../lib/store";
 import { BlockView, ThemeContext } from "./blocks";
 import { defaultTheme } from "../lib/types";
 
@@ -492,6 +493,14 @@ export function Landing({ onStart }: { onStart: () => void }) {
             <button onClick={() => scrollTo("how")} className="hover:text-canvas transition-colors">Product</button>
             <button onClick={() => scrollTo("export")} className="hover:text-canvas transition-colors">Export formats</button>
             <button onClick={() => scrollTo("pricing")} className="hover:text-canvas transition-colors">Pricing</button>
+            <button onClick={async () => {
+              useStore.getState().toast("info", "Packaging the full project source…");
+              try {
+                const { downloadSourceZip } = await import("../lib/sourceZip");
+                const bytes = await downloadSourceZip();
+                useStore.getState().toast("ok", `lessonsmith-source.zip downloaded (${(bytes / 1024).toFixed(0)} KB).`);
+              } catch { useStore.getState().toast("err", "Couldn't package the source. Try again."); }
+            }} className="hover:text-canvas transition-colors font-semibold text-canvas/75">Download source (.zip)</button>
             <span className="ml-auto font-mono text-[11px]">© 2026 · this build runs entirely in your browser</span>
           </div>
         </footer>
